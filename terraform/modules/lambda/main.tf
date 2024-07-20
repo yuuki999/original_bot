@@ -1,0 +1,97 @@
+// lambda関数をzipとして保存。このzipファイルをlambda関数としてデプロイする。
+data "archive_file" "lambda_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../../../src/lambda/document_processor/dist" // typescriptで書かれたlambda関数のビルド後のディレクトリ
+  output_path = "${path.module}/../../../src/lambda/document_processor/function.zip" // これはterraform planの段階で生成される
+}
+
+// lmabda関数の定義元。
+resource "aws_lambda_function" "document_processor" {
+  filename         = data.archive_file.lambda_zip.output_path
+  function_name    = var.function_name
+  role             = aws_iam_role.lambda_role.arn // lambdaのロールを関連づけ。
+  handler          = var.handler
+  runtime          = var.runtime // 実行環境を定義。node等
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+
+  environment {
+    variables = merge(var.environment_variables, {
+      NODE_OPTIONS = "--experimental-vm-modules" // クラウド上のlambdaでES modulesで実行できるようにする。
+    })
+  }
+
+  // lambdaとopensearchを同じVPCにして、VPCエンドポイントを使って通信する。
+  vpc_config {
+    subnet_ids         = var.vpc_config.subnet_ids
+    security_group_ids = var.vpc_config.security_group_ids
+  }
+
+  tags = var.tags
+}
+
+// lambda関数が他のAWSリソースにアクセスするためのIAMロールの定義。
+// ロールは「誰が」or「何が」ポリシーを持つかを定義する。
+resource "aws_iam_role" "lambda_role" {
+  name = "${var.function_name}-role"
+
+  // 信頼ポリシーの定義。lambda関数がこのロールをアサインすることを許可する。逆に特定のサービスがこのロールへのアクセスを拒否することも可能。
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17" // このバージョンが最新
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  // すでにポリシーが存在すれば、変更を無視する。
+  lifecycle {
+    ignore_changes = [assume_role_policy]
+  }
+}
+
+// lambda関数IAMロールに管理ポリシーをアタッチする。
+// 管理ポリシーは複数のロールにアタッチできるが、インラインポリシーは1つのロールにしかアタッチできない。
+resource "aws_iam_role_policy_attachment" "lambda_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  role       = aws_iam_role.lambda_role.name
+}
+
+// Lambda サービスのネットワークインターフェイス作成権限
+resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+  role       = aws_iam_role.lambda_role.name
+}
+
+// lambdaから、S3バケットにアクセスするためのIAMポリシーの定義。これはインラインポリシー
+resource "aws_iam_role_policy" "lambda_s3_policy" {
+  name = "${var.function_name}-s3-policy"
+  role = aws_iam_role.lambda_role.id
+
+  // 許可ポリシ-の定義。S3バケットに対してGetObjectアクションを許可する。
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject"
+        ]
+        Resource = "${var.s3_bucket_arn}/*"
+      }
+    ]
+  })
+}
+
+// lambdaがS3にアクセスできる権利
+resource "aws_lambda_permission" "allow_bucket" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.document_processor.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = var.s3_bucket_arn
+}

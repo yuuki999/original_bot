@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "target": "ES2022", // ECMAScript 2022を使う。export構文等が使えるようになる。esnextが最新だが、安定版を使う。
+        "module": "CommonJS",
+        "moduleResolution": "Node",
+        "outDir": "./dist",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true
+    },
+    "exclude": ["node_modules", "**/*.test.ts"], // コンパイル対象から除外するファイルを指定する。
+}

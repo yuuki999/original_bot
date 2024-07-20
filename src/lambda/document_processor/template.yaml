@@ -1,0 +1,14 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SAM Template for document_processor
+Resources:
+  DocumentProcessorFunction: # これがsam local invokeの時に指定する関数名
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/ # 実行されるコードのディレクトリ
+      Handler: index.handler # index.jsファイル内のhandler関数が呼び出されることを意味します。例えば、app.myHandlerと指定すれば、app.jsファイル内のmyHandler関数が呼び出されます。
+      Runtime: nodejs20.x
+      Architectures:
+        # x86_64: Intel互換の64ビットプロセッサ
+        # arm64: ARMプロセッサ
+        - x86_64
