@@ -98,11 +98,13 @@ resource "aws_iam_role_policy" "lambda_s3_policy" {
   })
 }
 
-// lambdaがS3にアクセスできる権利
+// S3がlambdaを呼び出すリソースベースのポリシー
+// S3からLambdaへのトリガーの場合、S3バケット側でLambdaへのアクセスを許可するリソースベースのポリシーを指定するのではなく、
+// Lambda側でS3バケットへのアクセスを許可するリソースベースのポリシーを指定する。
 resource "aws_lambda_permission" "allow_bucket" {
   statement_id  = "AllowExecutionFromS3Bucket"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.document_processor.arn
-  principal     = "s3.amazonaws.com"
-  source_arn    = var.s3_bucket_arn
+  action        = "lambda:InvokeFunction" // lambdaの実行を許可する。
+  function_name = aws_lambda_function.document_processor.arn // 権限を付与するlambdaのARN
+  principal     = "s3.amazonaws.com" // S3に権限を付与する。
+  source_arn    = var.s3_bucket_arn // さらに詳細にS3バケットのARN
 }
