@@ -113,3 +113,8 @@ variable "opensearch_password" {
   type        = string
   sensitive   = true // terraformのログ等に出力しないオプション
 }
+
+variable "lambda_role_arn" {
+  type        = string
+}
+

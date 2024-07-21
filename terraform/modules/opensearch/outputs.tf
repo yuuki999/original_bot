@@ -19,6 +19,6 @@ output "arn" {
 }
 
 output "endpoint" {
-  value       = aws_opensearch_domain.domain.endpoint
+  value = "https://${aws_opensearch_domain.domain.endpoint}"
 }
 

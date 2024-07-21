@@ -31,6 +31,7 @@ resource "aws_security_group" "lambda" {
   description = "Security group for Lambda function"
   vpc_id      = aws_vpc.main.id
 
+  // 全てのアウトバウンドトラフィックを許可 
   egress {
     from_port   = 0
     to_port     = 0
@@ -47,6 +48,7 @@ resource "aws_security_group" "opensearch" {
   description = "Security group for OpenSearch domain"
   vpc_id      = aws_vpc.main.id
 
+  // Lambdaのセキュリティグループ（aws_security_group.lambda.id）からのインバウンドトラフィックを443ポート（HTTPS）で許可。
   ingress {
     from_port       = 443
     to_port         = 443
@@ -55,4 +57,34 @@ resource "aws_security_group" "opensearch" {
   }
 
   tags = var.common_tags
+}
+
+# プライベートルートテーブルの作成
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+
+  tags = merge(var.common_tags, {
+    Name = "document-processor-private-route-table"
+  })
+}
+
+# サブネットをルートテーブルに関連付け
+resource "aws_route_table_association" "private" {
+  count          = 2
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
+}
+
+data "aws_region" "current" {}
+
+# S3用のVPCエンドポイントを作成
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id       = aws_vpc.main.id
+  service_name = "com.amazonaws.${data.aws_region.current.name}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids = [aws_route_table.private.id]
+
+  tags = merge(var.common_tags, {
+    Name = "document-processor-s3-endpoint"
+  })
 }

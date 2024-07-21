@@ -29,6 +29,8 @@ resource "aws_lambda_function" "document_processor" {
   }
 
   tags = var.tags
+  timeout = 180 // lambdaのタイムアウトを180秒に設定。最大15分まで伸ばせる。https://docs.aws.amazon.com/ja_jp/lambda/latest/dg/configuration-timeout.html
+  memory_size = 512 // lambdaのメモリサイズを増やす。デフォルトは128MB。最大は10240MB(10GB) https://docs.aws.amazon.com/ja_jp/lambda/latest/dg/gettingstarted-limits.html
 }
 
 // lambda関数が他のAWSリソースにアクセスするためのIAMロールの定義。
@@ -58,6 +60,7 @@ resource "aws_iam_role" "lambda_role" {
 
 // lambda関数IAMロールに管理ポリシーをアタッチする。
 // 管理ポリシーは複数のロールにアタッチできるが、インラインポリシーは1つのロールにしかアタッチできない。
+// memo: 本番環境では最小限の権限を与えるべき。
 resource "aws_iam_role_policy_attachment" "lambda_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
   role       = aws_iam_role.lambda_role.name
@@ -66,6 +69,12 @@ resource "aws_iam_role_policy_attachment" "lambda_policy" {
 // Lambda サービスのネットワークインターフェイス作成権限
 resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+  role       = aws_iam_role.lambda_role.name
+}
+
+// lambda関数がopensearchにアクセスするためのIAMポリシーのアタッチ
+resource "aws_iam_role_policy_attachment" "lambda_opensearch_access" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonOpenSearchServiceFullAccess"
   role       = aws_iam_role.lambda_role.name
 }
 

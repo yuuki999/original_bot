@@ -7,7 +7,8 @@ const s3Client = new S3Client({});
 
 // OpenSearchクライアントを取得する
 const getOpenSearchClient = async (): Promise<Client> => {
-  // Dopplerの環境変数を取得
+  // ローカルの場合は、Dopplerの環境変数を取得
+  // lambda上では、terraformで設定した環境変数を取得
   const username = process.env.OPENSEARCH_USERNAME;
   const password = process.env.OPENSEARCH_PASSWORD;
 

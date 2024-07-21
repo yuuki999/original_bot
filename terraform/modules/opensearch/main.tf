@@ -53,7 +53,23 @@ resource "aws_opensearch_domain" "domain" {
     security_group_ids = var.vpc_options.security_group_ids
   }
 
-  access_policies = var.access_policies
+  access_policies = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          AWS = var.lambda_role_arn
+        }
+        Action = "es:*"
+        // ここでaws_opensearch_domain.domain.arnを使うと、リソースが作成される前に参照しようとしてエラーになる。なのでdataを使う。
+        Resource = "arn:aws:es:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:domain/${var.opensearch_domain_name}/*"
+      }
+    ]
+  })
 
   tags = var.tags
 }
+
+data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}

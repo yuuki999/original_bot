@@ -47,6 +47,7 @@ module "opensearch_domain" {
   tags                      = var.common_tags
   opensearch_username = data.doppler_secrets.this.map.OPENSEARCH_USERNAME
   opensearch_password = data.doppler_secrets.this.map.OPENSEARCH_PASSWORD
+  lambda_role_arn     = module.lambda_function.role_arn
 }
 
 // resourceは、実際にAWSのリソースを作成する定義。
