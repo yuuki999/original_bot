@@ -1,7 +1,16 @@
+// リファクタ対象: ほぼ全てvarで定義しているが、決まりきった値は直接記述したほうが可読性が良くなるかも。
+
+// dataは外部のリソースを読み取る。doppler_secretsはDopplerからシークレットを取得する。thisは任意の名前。
+// 取得したいプロジェクトと環境を指定する。
+data "doppler_secrets" "this" {
+  project = "original_bot"
+  config  = "dev"
+}
+
 // moduleは関数の概念に近い、この定義を./modules/s3に適応している。
 module "s3_bucket" {
   source      = "./modules/s3"
-  bucket_name = var.opensearch_document_bucket_name // ここの親の定義は、./modules/s3/main.tfに引き継がれオーバライドされる。
+  bucket_name = var.opensearch_document_bucket_name // ここの親の定義は、./modules/s3/main.tfに引き継がれオーバライドされる。そしてここに設定する値は/modules/s3/variables.tfに変数として定義しておかないとエラーになる。
   tags        = var.common_tags
 
   // S3はグローバルサービスなのでVPCの設定は不要。
@@ -17,6 +26,10 @@ module "lambda_function" {
     security_group_ids = [module.vpc.lambda_security_group_id]
   }
   tags               = var.common_tags
+
+  opensearch_endpoint = module.opensearch_domain.endpoint
+  opensearch_username = data.doppler_secrets.this.map.OPENSEARCH_USERNAME
+  opensearch_password = data.doppler_secrets.this.map.OPENSEARCH_PASSWORD
 }
 
 module "opensearch_domain" {
@@ -27,13 +40,13 @@ module "opensearch_domain" {
   instance_count            = var.opensearch_instance_count
   zone_awareness_enabled    = true
   availability_zone_count   = 2
-  master_user_name          = var.opensearch_master_user_name
-  master_user_password      = var.opensearch_master_user_password
   vpc_options = {
     subnet_ids         = module.vpc.private_subnet_ids
     security_group_ids = [module.vpc.opensearch_security_group_id]
   }
   tags                      = var.common_tags
+  opensearch_username = data.doppler_secrets.this.map.OPENSEARCH_USERNAME
+  opensearch_password = data.doppler_secrets.this.map.OPENSEARCH_PASSWORD
 }
 
 // resourceは、実際にAWSのリソースを作成する定義。

@@ -28,8 +28,8 @@ resource "aws_opensearch_domain" "domain" {
     enabled                        = var.advanced_security_options_enabled
     internal_user_database_enabled = var.internal_user_database_enabled
     master_user_options {
-      master_user_name     = var.master_user_name
-      master_user_password = var.master_user_password
+      master_user_name     = var.opensearch_username
+      master_user_password = var.opensearch_password
     }
   }
 

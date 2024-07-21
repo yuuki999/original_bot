@@ -18,8 +18,7 @@ output "arn" {
   value       = aws_opensearch_domain.domain.arn
 }
 
-output "dashboard_endpoint" {
-  value       = aws_opensearch_domain.domain.dashboard_endpoint
-  description = "Endpoint URL for OpenSearch Dashboards"
+output "endpoint" {
+  value       = aws_opensearch_domain.domain.endpoint
 }
 

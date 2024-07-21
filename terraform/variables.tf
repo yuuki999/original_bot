@@ -33,17 +33,6 @@ variable "opensearch_instance_count" {
   default     = 1
 }
 
-variable "opensearch_master_user_name" {
-  description = "Master user name for OpenSearch"
-  type        = string
-}
-
-variable "opensearch_master_user_password" {
-  description = "Master user password for OpenSearch"
-  type        = string
-  sensitive   = true
-}
-
 variable "lambda_function_name" {
   description = "Name of the Lambda function"
   type        = string
@@ -80,3 +69,8 @@ variable "aws_profile" {
 #   type        = list(string)
 #   description = "List of VPC Security Group IDs for the OpenSearch domain"
 # }
+
+variable "doppler_token" {
+  type        = string
+  description = "Doppler API token"
+}

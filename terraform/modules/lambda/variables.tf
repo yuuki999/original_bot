@@ -45,3 +45,19 @@ variable "vpc_config" {
   })
   description = "VPC configuration for Lambda function"
 }
+
+variable "opensearch_username" {
+  description = "OpenSearch username"
+  type        = string
+}
+
+variable "opensearch_password" {
+  description = "OpenSearch password"
+  type        = string
+  sensitive   = true
+}
+
+variable "opensearch_endpoint" {
+  description = "The endpoint of the OpenSearch domain"
+  type        = string
+}

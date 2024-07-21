@@ -4,6 +4,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    doppler = {
+      source  = "DopplerHQ/doppler"
+      version = "~> 1.2.0"
+    }
   }
 
   // terraformのstateファイルをS3に保存する設定、何もしないとローカルに保存される。
@@ -13,6 +17,10 @@ terraform {
     region = "us-east-1"
     profile = "dev"
   }
+}
+
+provider "doppler" {
+  doppler_token = var.doppler_token
 }
 
 provider "aws" {

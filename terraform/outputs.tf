@@ -15,5 +15,5 @@ output "opensearch_domain_endpoint" {
 
 output "opensearch_kibana_endpoint" {
   description = "Kibana endpoint of the created OpenSearch domain"
-  value       = module.opensearch_domain.dashboard_endpoint
+  value       = module.opensearch_domain.endpoint
 }

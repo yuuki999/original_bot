@@ -57,17 +57,6 @@ variable "internal_user_database_enabled" {
   default     = true
 }
 
-variable "master_user_name" {
-  description = "Master user name for OpenSearch"
-  type        = string
-}
-
-variable "master_user_password" {
-  description = "Master user password for OpenSearch"
-  type        = string
-  sensitive   = true
-}
-
 variable "encrypt_at_rest_enabled" {
   description = "Enable encryption at rest"
   type        = bool
@@ -111,4 +100,16 @@ variable "tags" {
   description = "Tags to apply to the OpenSearch domain"
   type        = map(string)
   default     = {}
+}
+
+// ユーザー情報
+variable "opensearch_username" {
+  description = "OpenSearch username"
+  type        = string
+}
+
+variable "opensearch_password" {
+  description = "OpenSearch password"
+  type        = string
+  sensitive   = true // terraformのログ等に出力しないオプション
 }

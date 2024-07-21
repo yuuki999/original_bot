@@ -15,9 +15,11 @@ resource "aws_lambda_function" "document_processor" {
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
   environment {
-    variables = merge(var.environment_variables, {
-      NODE_OPTIONS = "--experimental-vm-modules" // クラウド上のlambdaでES modulesで実行できるようにする。
-    })
+    variables = {
+      OPENSEARCH_ENDPOINT = var.opensearch_endpoint
+      OPENSEARCH_USERNAME = var.opensearch_username
+      OPENSEARCH_PASSWORD = var.opensearch_password
+    }
   }
 
   // lambdaとopensearchを同じVPCにして、VPCエンドポイントを使って通信する。
