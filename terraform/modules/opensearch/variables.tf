@@ -48,13 +48,13 @@ variable "volume_size" {
 variable "advanced_security_options_enabled" {
   description = "Enable advanced security options"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "internal_user_database_enabled" {
   description = "Enable internal user database"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "encrypt_at_rest_enabled" {

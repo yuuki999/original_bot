@@ -61,3 +61,7 @@ variable "opensearch_endpoint" {
   description = "The endpoint of the OpenSearch domain"
   type        = string
 }
+
+variable "opensearch_domain_arn" {
+  type        = string
+}

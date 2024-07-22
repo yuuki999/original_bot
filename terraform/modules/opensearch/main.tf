@@ -25,12 +25,11 @@ resource "aws_opensearch_domain" "domain" {
 
   // セキュリティオプション
   advanced_security_options {
-    enabled                        = var.advanced_security_options_enabled
+    enabled                        = var.advanced_security_options_enabled // falseにしてIAM ベースの認証とアクセス制御のみとする。
     internal_user_database_enabled = var.internal_user_database_enabled
-    master_user_options {
-      master_user_name     = var.opensearch_username
-      master_user_password = var.opensearch_password
-    }
+    # master_user_options { // lambdaがIAM認証を使用する場合は不要になる可能性がある。
+    #   master_user_arn = aws_iam_role.lambda_role.arn
+    # }
   }
 
   // OpenSearchの暗号化設定
@@ -53,6 +52,7 @@ resource "aws_opensearch_domain" "domain" {
     security_group_ids = var.vpc_options.security_group_ids
   }
 
+  // リソースベースのポリシー
   access_policies = jsonencode({
     Version = "2012-10-17"
     Statement = [

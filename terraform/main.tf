@@ -27,9 +27,10 @@ module "lambda_function" {
   }
   tags               = var.common_tags
 
-  opensearch_endpoint = module.opensearch_domain.endpoint
-  opensearch_username = data.doppler_secrets.this.map.OPENSEARCH_USERNAME
-  opensearch_password = data.doppler_secrets.this.map.OPENSEARCH_PASSWORD
+  opensearch_endpoint   = module.opensearch_domain.endpoint
+  opensearch_username   = data.doppler_secrets.this.map.OPENSEARCH_USERNAME
+  opensearch_password   = data.doppler_secrets.this.map.OPENSEARCH_PASSWORD
+  opensearch_domain_arn = module.opensearch_domain.arn
 }
 
 module "opensearch_domain" {

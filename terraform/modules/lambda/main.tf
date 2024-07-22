@@ -14,11 +14,13 @@ resource "aws_lambda_function" "document_processor" {
   runtime          = var.runtime // 実行環境を定義。node等
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
+  // lambda関数がアクセスする環境変数の定義。
   environment {
     variables = {
       OPENSEARCH_ENDPOINT = var.opensearch_endpoint
-      OPENSEARCH_USERNAME = var.opensearch_username
-      OPENSEARCH_PASSWORD = var.opensearch_password
+      LAMBDA_ROLE_ARN     = aws_iam_role.lambda_role.arn
+      # OPENSEARCH_USERNAME = var.opensearch_username
+      # OPENSEARCH_PASSWORD = var.opensearch_password
     }
   }
 
@@ -72,10 +74,26 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
   role       = aws_iam_role.lambda_role.name
 }
 
-// lambda関数がopensearchにアクセスするためのIAMポリシーのアタッチ
-resource "aws_iam_role_policy_attachment" "lambda_opensearch_access" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonOpenSearchServiceFullAccess"
-  role       = aws_iam_role.lambda_role.name
+// lambda関数がopensearchにアクセスするためのIAMポリシーのアタッチ、これはインラインポリシー
+resource "aws_iam_role_policy" "lambda_opensearch_access" {
+  name = "${var.function_name}-opensearch-policy"
+  role = aws_iam_role.lambda_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "es:ESHttpPost",
+          "es:ESHttpPut",
+          "es:ESHttpGet",
+          "es:ESHttpHead"
+        ]
+        Resource = "${var.opensearch_domain_arn}/*"
+      }
+    ]
+  })
 }
 
 // lambdaから、S3バケットにアクセスするためのIAMポリシーの定義。これはインラインポリシー
