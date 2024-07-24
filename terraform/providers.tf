@@ -8,6 +8,11 @@ terraform {
       source  = "DopplerHQ/doppler"
       version = "~> 1.2.0"
     }
+    // 証明書の作成に必要なTLSプロバイダー
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 3.0"
+    }
   }
 
   // terraformのstateファイルをS3に保存する設定、何もしないとローカルに保存される。

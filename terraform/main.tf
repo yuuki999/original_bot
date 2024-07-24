@@ -49,6 +49,7 @@ module "opensearch_domain" {
   opensearch_username = data.doppler_secrets.this.map.OPENSEARCH_USERNAME
   opensearch_password = data.doppler_secrets.this.map.OPENSEARCH_PASSWORD
   lambda_role_arn     = module.lambda_function.role_arn
+  allowed_iam_arn     = var.allowed_iam_arn
 }
 
 // resourceは、実際にAWSのリソースを作成する定義。
@@ -74,4 +75,28 @@ resource "aws_api_gateway_rest_api" "document_processor" {
 module "vpc" {
   source = "./modules/vpc"
   common_tags = var.common_tags
+  allowed_ip = var.allowed_ip
+}
+
+// ACM
+# module "acm" {
+#   source = "./modules/acm"
+# }
+
+// VPN
+module "vpn" {
+  source = "./modules/vpn"
+  vpc_id                     = module.vpc.vpc_id
+  vpc_cidr                   = module.vpc.vpc_cidr
+  subnet_ids                 = module.vpc.private_subnet_ids
+  cloudwatch_log_group_name  = module.cw.vpn_log_group_name
+  cloudwatch_log_stream_name = module.cw.vpn_log_stream_name
+  server_certificate_arn     = var.certificate_arn
+
+  depends_on = [module.vpc, module.lambda_function, module.opensearch_domain]
+}
+
+// CW
+module "cw" {
+  source = "./modules/cw"
 }

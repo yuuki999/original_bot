@@ -3,8 +3,3 @@ variable "common_tags" {
   type        = map(string)
   default     = {}
 }
-
-variable "allowed_ip" {
-  type        = string
-  description = "Allowed IP address for OpenSearch access"
-}

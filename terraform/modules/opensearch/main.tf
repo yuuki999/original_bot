@@ -59,7 +59,10 @@ resource "aws_opensearch_domain" "domain" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = var.lambda_role_arn
+          AWS = [
+            var.lambda_role_arn,
+            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/${var.allowed_iam_arn}"
+          ]
         }
         Action = "es:*"
         // ここでaws_opensearch_domain.domain.arnを使うと、リソースが作成される前に参照しようとしてエラーになる。なのでdataを使う。

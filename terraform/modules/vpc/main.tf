@@ -56,6 +56,14 @@ resource "aws_security_group" "opensearch" {
     security_groups = [aws_security_group.lambda.id]
   }
 
+  // ダッシュボードにアクセスするために、許可するIPアドレスを指定
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["10.100.0.0/16"]  // クライアントVPNのCIDR
+  }
+
   tags = var.common_tags
 }
 

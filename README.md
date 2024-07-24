@@ -21,6 +21,11 @@ terraform plan -destroy # 削除プランの確認
 terraform destroy　#　削除
 ```
 
+リソース再作成、下記コマンドでtaintしたリソースは次のapply時に強制的に再作成される。  
+```
+terraform taint [リソース名] # 例: terraform taint module.vpn.aws_ec2_client_vpn_authorization_rule.main
+```
+
 ### awsコマンド
 
 バケット作成
@@ -114,6 +119,227 @@ export DOPPLER_TOKEN=$(doppler configure --json | grep -o '"token":"[^"]*' | sed
 export TF_VAR_doppler_token=$DOPPLER_TOKEN
 ```
 
+### opensearchのダッシュボードにアクセスする方法
+
+1. VPCの画面から、左のサイドバー「クライアントVPNエンドポイント」をクリックする。  
+https://us-east-1.console.aws.amazon.com/vpc/home?region=us-east-1#ClientVPNEndpointDetails:clientVpnEndpointId=cvpn-endpoint-08db35bf15ae55f16  
+1. クライアント設定をダウンロード  
+1. OpenVPNをDLする。
+https://openvpn.net/client-connect-vpn-for-mac-os/
+1. easy-rsaをcloneしセットアップする。
+    ```
+    git clone https://github.com/OpenVPN/easy-rsa.git
+    cd easy-rsa/easyrsa3
+    ./easyrsa init-pki // PKIの初期化
+    ./easyrsa build-ca nopass // CAの作成
+
+    ./easyrsa build-server-full server nopass // サーバー証明書の作成。Confirm request details:と出力されるので「yes」と入力
+    ./easyrsa build-client-full client1.domain.tld nopass // クライアント証明書の作成。Confirm request details:と出力されるので「yes」と入力
+    ```
+    ファイルが生成されるので下記コマンドで、ファイルが作成されていたらOK  
+    ls -la ./easyrsa3/pki/issued   
+    ```
+    client1.domain.tld.crt
+    server.crt
+    ```
+    ls -la ./easyrsa3/pki/private   
+    ```
+    ca.key
+    client1.domain.tld.key
+    server.key
+    ```
+1. 手順2でダウンロードした<span style="color: #338833;">downloaded-client-config.ovpn</span>を編集する。
+    ```
+    cat ./easyrsa3/pki/issued/client1.domain.tld.crt // crtを取得
+    cat ./easyrsa3/pki/private/client1.domain.tld.key // keyを取得
+    ```
+    <span style="color: #338833;">downloaded-client-config.ovpn</span>は下記のような内容だと思うので、 \<cert\> と \<key\> のセクションを追加します。
+    ```
+    client
+    dev tun
+    proto udp
+    remote cvpn-endpoint-08db35bf15ae55f16.prod.clientvpn.us-east-1.amazonaws.com 443
+    remote-random-hostname
+    resolv-retry infinite
+    nobind
+    remote-cert-tls server
+    cipher AES-256-GCM
+    verb 3
+
+    <ca>
+    hoge
+    </ca>
+
+    <cert>
+    -----BEGIN CERTIFICATE-----
+    # client1.domain.tld.crt の内容をここにコピー
+    -----END CERTIFICATE-----
+    </cert>
+
+    <key>
+    -----BEGIN PRIVATE KEY-----
+    # client1.domain.tld.key の内容をここにコピー
+    -----END PRIVATE KEY-----
+    </key>
+
+    reneg-sec 0
+
+    verify-x509-name clientvpn.example.com name
+    ```
+
+
+
+これは仮の手順として記録  
+
+1. CA（認証局）の秘密鍵と公開証明書の生成
+    ```
+    openssl genrsa -out ca.key 2048 # CA鍵の生成 2048ビット長で作成される。
+    openssl req -new -x509 -days 3650 -key ca.key -out ca.crt -subj "/CN=yuki-engineer.com" # CA証明書の生成 有効期間は10年(3650)
+    ```
+1. クライアント秘密鍵と公開証明書署名要求（CSR）の生成
+    ```
+    openssl genrsa -out client.key 2048 # クライアント鍵の生成
+    openssl req -new -key client.key -out client.csr -subj "/CN=yuki-engineer.com" # クライアントCSRの生成 
+    ```
+1. クライアント公開証明書の作成
+    ```
+    openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt -days 3650
+    ```
+1. PKCS#12形式（.p12）のクライアント証明書の生成（オプション、WindowsのVPNクライアントで使う可能性がある。）
+    ```
+    openssl pkcs12 -export -clcerts -in client.crt -inkey client.key -out client.p12
+    ```
+1. サーバー証明書の作成
+    ```
+    openssl genrsa -out server.key 2048
+    openssl req -new -key server.key -out server.csr -subj "/CN=yuki-engineer.com"
+    openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 365 -extensions SAN -extfile <(printf "\n[SAN]\nsubjectAltName=DNS:yuki-engineer.com")
+    ```
+1. ここまで下記のファイルが作成されているはず。
+    - ca.crt
+        - CA（認証局）の証明書  
+        VPNサーバーとクライアントの信頼関係を確立するために使用されます。  
+        AWS ACMにアップロードする必要がある。
+    - <span style="color: #338833;">ca.key</span>
+        - CA（認証局）の秘密鍵  
+        AWS ACMにアップロードする必要がある。  
+        <span style="color: #338833;">非常に重要。安全に保管し、決して共有しないでください。</span>
+    - ca.srl
+        - CA（認証局）のシリアルファイル  
+        証明書の発行管理に使用されます。
+    - client.crt
+        - クライアント証明書  
+        VPNクライアントの認証に使用されます。
+    - client.csr
+        - クライアント証明書署名要求  
+        クライアント証明書の生成プロセスで使用されました。通常は保持する必要はありません。
+    - <span style="color: #338833;">client.key</span>
+        - クライアント秘密鍵  
+        <span style="color: #338833;">クライアント認証に使用されます。安全に保管してください。</span>
+    - client.p12
+        - PKCS#12形式のクライアント証明書  
+        一部のVPNクライアントソフトウェアで使用されます。
+    - server.crt
+    - server.csr
+    - server.key
+1. 作成したCA証明書と秘密鍵をACMにアップロードする。
+    ```
+    aws acm import-certificate --certificate fileb://server.crt --private-key fileb://server.key --certificate-chain fileb://ca.crt --profile dev --region us-east-1
+    ```
+1. AWS VPNクライアント設定ファイルをDLする。
+    ```
+    aws ec2 export-client-vpn-client-configuration --client-vpn-endpoint-id cvpn-endpoint-06fbc37799e496e3c --output text  > client-config.ovpn --profile dev --region us-east-1
+    ```
+
+#### ※ CA（認証局)についての説明。
+
+1. 定義：
+   CA（Certificate Authority）は、デジタル証明書を発行し、管理する信頼できる第三者機関です。
+2. 役割：
+   - デジタル証明書の発行
+   - 証明書の有効性の保証
+   - 証明書の失効管理
+3. 例え：
+   CAは現実世界のパスポート発行機関のようなものです。パスポートがあなたの身元を保証するように、CAが発行したデジタル証明書はデジタル世界での身元を保証します。
+
+パスポートのたとえを基に、デジタル証明書システムを詳しく説明します
+1. CA（認証局）：
+   - たとえ：政府の公印を管理する部署
+   - 公開鍵（ca.crt）：公印そのもの
+   - 秘密鍵（ca.key）：公印を押す権限と能力
+2. クライアント証明書の発行プロセス：
+   - たとえ：パスポートの発行
+   - クライアントの公開鍵：市民の個人情報（名前、生年月日など）
+   - クライアントの秘密鍵：市民の指紋（本人だけが持つ固有の情報）
+   - 証明書署名要求（CSR）：パスポート申請書
+   - CAによる署名：公印を押すこと
+3. クライアント証明書の検証：
+   - たとえ：パスポートの真正性確認
+   - VPNサーバー：入国管理官
+   - CA証明書（公開鍵）：公印の見本
+   - クライアント証明書：押印されたパスポート
+
+プロセスの流れ：
+
+1. クライアント証明書の作成：
+   - 市民（クライアント）が個人情報（公開鍵）と指紋（秘密鍵）を準備
+   - パスポート申請書（CSR）を作成し、政府（CA）に提出
+   - 政府が申請書を確認し、公印（CAの秘密鍵で署名）を押してパスポート（クライアント証明書）を発行
+2. VPN接続時の認証：
+   - 入国管理官（VPNサーバー）がパスポート（クライアント証明書）を確認
+   - 公印の見本（CA証明書）と照合して、パスポートが正規のものか確認
+   - パスポートの個人情報と、実際の人物（クライアントの秘密鍵による認証）が一致するか確認
+3. セキュリティの仕組み：
+   - 公印（CAの公開鍵）は広く公開されているが、押す権限（CAの秘密鍵）は厳重に管理されている
+   - パスポート（クライアント証明書）は公開情報だが、それを「所有」している証明（クライアントの秘密鍵）は本人だけが持っている
+
+このシステムにより：
+- 誰でも公印（CA証明書）を見ることができるが、偽造することはできない
+- パスポート（クライアント証明書）を持っているだけでなく、本人であること（秘密鍵の所有）も証明する必要がある
+
+この仕組みにより、VPN接続の両端（サーバーとクライアント）が互いの身元を確実に確認でき、安全な通信を確立することができます。
+
+TODO: さらにサーバー証明書という概念もあり、VPNサーバー側の信頼性を保つ仕組みも必要とのこと。
+
+### ACM
+
+ACMとAWS VPNと証明書についての理解を深める。
+
+AWS VPNで今回使用することを検討したのは下記で2点。個人開発の場合はクライアントVPN接続を選択する。
+- Site-to-Site VPN接続: 企業や組織全体のオンプレミスネットワークをAWS VPCに接続するために使用されます。
+- クライアントVPN接続: 個々のユーザー（クライアントPC）がリモートからAWS VPCに安全に接続するために使用されます。
+
+VPNを使うにはクライアント認証をする必要があり、下記3点がある。今回は「相互認証 (証明書ベース)」を使用する。
+- Active Directory 認証 (ユーザーベース)
+- 相互認証 (証明書ベース)
+- シングルサインオン (SAML ベースのフェデレーション認証) (ユーザーベース)
+https://docs.aws.amazon.com/ja_jp/vpn/latest/clientvpn-admin/client-authentication.html
+
+相互認証（証明書ベース）について、いくつかの重要なポイントを下記に記す。
+1. サーバー証明書：
+   - VPNサーバー（エンドポイント）の身元を証明するために使用されます。
+   - AWS Certificate Manager (ACM) で管理されます。
+   - ACMがパブリック証明書を発行しており、こちらを利用すると管理者が有効期限を管理する等の手間が省ける。
+
+
+2. クライアント証明書：
+   - 各VPNクライアント（ユーザー）の身元を証明するために使用されます。
+   - 通常、自己署名証明書や独自のプライベート認証局 (CA) で発行された証明書を使用します。
+
+3. 証明書の管理：
+   - サーバー証明書とクライアント証明書の両方の有効期限を定期的に確認し、必要に応じて更新する必要があります。
+   - クライアント証明書の失効管理も考慮する必要があります。
+
+4. 設定プロセス：
+   - サーバー証明書をACMにインポートまたは発行します。
+   - クライアント証明書を発行し、VPNクライアントに配布します。
+   - VPNエンドポイントの作成時に、サーバー証明書とクライアント証明書のルートCAを指定します。
+
+5. セキュリティ上の利点：
+   - ユーザー名とパスワードだけでなく、証明書も必要とするため、セキュリティが強化されます。
+   - 証明書の失効管理により、アクセス制御をより細かく管理できます。
+
+
 
 ### VPC
 
@@ -126,7 +352,15 @@ VPCは<span style="color: #338833;">10.0.0.0/16</span>のような値を指定�
 ビット（bit）：コンピュータが扱う最小の情報単位。0 か 1 の値を取ります。  
 バイト（byte）：8ビットで構成される情報の単位。
 だから00001010は8ビットで構成されていて、これで1バイトと表現する。  
-なので<span style="color: #338833;">10.0.0.0/16</span>の10(10進数)はバイトに戻すると00001010 = 2 + 8で10となる。
+なので<span style="color: #338833;">10.0.0.0/16</span>の10(10進数)はバイトに戻すると00001010 = 2 + 8で10となる。  
+
+VPC 内に配置されたリソース（OpenSearchドメイン等）は、デフォルトでインターネットから直接アクセスすることはできません。  
+セキュリティグループとネットワーク ACL は VPC 内のトラフィックを制御するためのもの。
+なのでVPC内のリソースに、VPC外からアクセスするには、下記の手段を取る必要がある。
+- VPN 接続
+- AWS Direct Connect
+- 踏み台サーバー（Bastion Host）
+- NAT ゲートウェイ（アウトバウンドトラフィック用）
 
 #### IPアドレスのネットワーク部とホスト部について
 
@@ -427,10 +661,24 @@ IAM、リソースベース、セキュリティグループの層について�
 - セキュリティグループをlambdaとopensearchに適用して、ネットワーク通信の許可をする。
 
 
+### その他
 
+自分のパブリックIPを調べる方法
+```
+curl ifconfig.me
+```
 
-TODO: 
-- 現在の構成を図にしたい、特にVPC周りの関係性についてキャッチアップする。
-- lambdaの中身を実装したい
-- opensearchの仕様を把握する。
-- S3にはlambdaからのアクセスを許可する、リソースベースのポリシーが必要ないのはなぜ？
+ファイルを検索する
+```
+find . -name "*client1*" 
+```
+
+terraformのリソース関係図を出力する。
+```
+terraform graph -draw-cycles | dot -Tpng > graph.png
+```
+
+### TODO
+・Route53の理解をする。
+・何か管理画面とかを作るときはmobbinかFigrが参考になりそう。
+

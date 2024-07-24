@@ -118,3 +118,7 @@ variable "lambda_role_arn" {
   type        = string
 }
 
+variable "allowed_iam_arn" {
+  type        = string
+}
+

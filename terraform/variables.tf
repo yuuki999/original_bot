@@ -74,3 +74,16 @@ variable "doppler_token" {
   type        = string
   description = "Doppler API token"
 }
+
+variable "allowed_ip" {
+  type        = string
+  description = "Allowed IP address for OpenSearch access"
+}
+
+variable "allowed_iam_arn" {
+  type        = string
+}
+
+variable "certificate_arn" {
+  type        = string
+}
