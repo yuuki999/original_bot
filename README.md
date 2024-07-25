@@ -1,9 +1,9 @@
 ### AWS設計図
 
-
-![](original_bot.drawio "AWS設計図")
+![](original_bot.png "AWS設計図")
 
 ※ GithubActionでdrawファイルをpngに変換して表示
+※ 日本語が文字化けしているので修正する。
 
 ### terraformコマンド
 
