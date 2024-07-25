@@ -1,3 +1,10 @@
+### AWS設計図
+
+
+![](original_bot.drawio "AWS設計図")
+
+※ GithubActionでdrawファイルをpngに変換して表示
+
 ### terraformコマンド
 
 初期化
