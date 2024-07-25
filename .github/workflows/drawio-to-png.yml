@@ -18,13 +18,16 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install drawio-export
-        run: npm install -g @drawio/drawio-export
+      - name: Install draw.io
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2 libgbm1 libgtk-3-0 libnss3 xvfb
+          npm install -g drawio-desktop
 
       - name: Convert .drawio to .png
         run: |
           for file in $(find . -name "*.drawio"); do
-            npx drawio-export --output "$(dirname "$file")/$(basename "$file" .drawio).png" "$file"
+            xvfb-run --auto-servernum drawio -x -f png -o "$(dirname "$file")/$(basename "$file" .drawio).png" "$file"
           done
 
       - name: Commit and push changes
@@ -32,7 +35,7 @@ jobs:
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
           git add .
-          git commit -m "Auto-convert .drawio to .png"
+          git commit -m "Auto-convert .drawio to .png" || echo "No changes to commit"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
