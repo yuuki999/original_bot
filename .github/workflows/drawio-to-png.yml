@@ -18,7 +18,7 @@ jobs:
           node-version: '20'
 
       - name: Install drawio-export
-        run: pnpm install -g drawio-export
+        run: npm install -g drawio-export
 
       - name: Convert .drawio to .png
         run: |
