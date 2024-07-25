@@ -7,7 +7,7 @@ on:
 
 jobs:
   convert:
-    runs-on: ubuntu-latest # 実行環境
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -18,12 +18,12 @@ jobs:
           node-version: '20'
 
       - name: Install drawio-export
-        run: npm install -g drawio-export
+        run: npm install -g @drawio/drawio-export
 
       - name: Convert .drawio to .png
         run: |
           for file in $(find . -name "*.drawio"); do
-            drawio-export --output "$(dirname "$file")/$(basename "$file" .drawio).png" "$file"
+            npx drawio-export --output "$(dirname "$file")/$(basename "$file" .drawio).png" "$file"
           done
 
       - name: Commit and push changes
