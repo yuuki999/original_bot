@@ -6,7 +6,6 @@ on:
       - '*.drawio'
   workflow_dispatch:
 
-# 明示的な権限設定を追加
 permissions:
   contents: write
 
@@ -28,6 +27,7 @@ jobs:
           sudo apt-get install -y libasound2 libgbm1 libgtk-3-0 libnss3 xvfb libnotify4
           wget https://github.com/jgraph/drawio-desktop/releases/download/v22.1.11/drawio-amd64-22.1.11.deb
           sudo apt-get install -y ./drawio-amd64-22.1.11.deb
+          rm drawio-amd64-22.1.11.deb  # インストール後に deb ファイルを削除
 
       - name: Convert .drawio to .png
         run: |
@@ -39,7 +39,7 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add .
+          git add *.png  # 変換後の PNG ファイルのみを追加
           git commit -m "Auto-convert .drawio to .png" || echo "No changes to commit"
           git push
         env:
