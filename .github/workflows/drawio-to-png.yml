@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - 'original_bot.drawio' # pushした時に、original_bot.drawioが変更されていたら実行
-    workflow_dispatch: ## 手動実行も可能にする。
+  workflow_dispatch: # 手動実行も可能にする。
 
 jobs:
   convert:
