@@ -18,13 +18,12 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install draw.io
+      - name: Install draw.io and dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2 libgbm1 libgtk-3-0 libnss3 xvfb
+          sudo apt-get install -y libasound2 libgbm1 libgtk-3-0 libnss3 xvfb libnotify4
           wget https://github.com/jgraph/drawio-desktop/releases/download/v22.1.11/drawio-amd64-22.1.11.deb
-          sudo dpkg -i drawio-amd64-22.1.11.deb
-          sudo apt-get install -f
+          sudo apt-get install -y ./drawio-amd64-22.1.11.deb
 
       - name: Convert .drawio to .png
         run: |
