@@ -17,10 +17,10 @@ terraform {
 
   // terraformのstateファイルをS3に保存する設定、何もしないとローカルに保存される。
   backend "s3" {
-    bucket = "terraform-state-bucket-yuuki-172106066"
+    bucket = "terraform-state-bucket-yuki"
     key    = "dev/terraform.tfstate"
-    region = "us-east-1"
-    profile = "dev"
+    region = "us-east-2"
+    # profile = "dev"
   }
 }
 

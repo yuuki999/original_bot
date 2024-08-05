@@ -42,6 +42,28 @@ resource "aws_security_group" "lambda" {
   tags = var.common_tags
 }
 
+// 踏み台サーバー（バスティオンホスト）のセキュリティグループ
+resource "aws_security_group" "bastion_sg" {
+  name        = "bastion-security-group"
+  description = "Security group for bastion host"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["${var.bation_ip}/0"] // 自分のIPアドレス
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+
 # opensearchセキュリティグループの設定
 resource "aws_security_group" "opensearch" {
   name        = "document-processor-opensearch-sg"
@@ -62,6 +84,14 @@ resource "aws_security_group" "opensearch" {
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["10.100.0.0/16"]  // クライアントVPNのCIDR
+  }
+
+  // 踏み台サーバー（バスティオンホスト）からのアクセスを許可
+  ingress {
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    security_groups = [aws_security_group.bastion_sg.id]  // 踏み台サーバーのセキュリティグループID
   }
 
   tags = var.common_tags
@@ -95,4 +125,47 @@ resource "aws_vpc_endpoint" "s3" {
   tags = merge(var.common_tags, {
     Name = "document-processor-s3-endpoint"
   })
+}
+
+# インターネットゲートウェイの作成
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "main-igw"
+  }
+}
+
+# パブリックルートテーブルの作成（または既存のものを更新）
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main.id
+  }
+
+  tags = {
+    Name = "Public Route Table"
+  }
+}
+
+# パブリックサブネットの設定
+resource "aws_subnet" "public" {
+  count             = 1
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.${count.index + 101}.0/24"  # プライベートサブネットと重複しないCIDRを使用
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+  map_public_ip_on_launch = true  # このサブネットで起動されるインスタンスにパブリックIPを自動割り当て
+
+  tags = merge(var.common_tags, {
+    Name = "document-processor-public-subnet-${count.index + 1}"
+  })
+}
+
+# パブリックサブネットとルートテーブルの関連付け
+resource "aws_route_table_association" "public" {
+  count          = 1 
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
 }

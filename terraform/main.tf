@@ -76,6 +76,7 @@ module "vpc" {
   source = "./modules/vpc"
   common_tags = var.common_tags
   allowed_ip = var.allowed_ip
+  bation_ip = var.bation_ip
 }
 
 // ACM
@@ -99,4 +100,13 @@ module "vpn" {
 // CW
 module "cw" {
   source = "./modules/cw"
+}
+
+module "ec2" {
+  source = "./modules/ec2"
+  vpc_security_group_ids = module.vpc.battion_security_group_id
+  public_subnet_id      = module.vpc.public_subnet_id
+  public_key_path       = var.public_key_path
+
+  depends_on = [module.vpc]
 }

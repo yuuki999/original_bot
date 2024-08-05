@@ -5,7 +5,7 @@ resource "aws_opensearch_domain" "domain" {
   // インスタンスの設定
   cluster_config {
     instance_type          = var.instance_type
-    instance_count         = var.instance_count
+    instance_count         = 2
     zone_awareness_enabled = var.zone_awareness_enabled
 
     dynamic "zone_awareness_config" {
@@ -61,7 +61,7 @@ resource "aws_opensearch_domain" "domain" {
         Principal = {
           AWS = [
             var.lambda_role_arn,
-            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/${var.allowed_iam_arn}"
+            var.allowed_iam_arn
           ]
         }
         Action = "es:*"

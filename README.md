@@ -38,6 +38,7 @@ terraform taint [リソース名] # 例: terraform taint module.vpn.aws_ec2_clie
 バケット作成
 ```
 aws s3api create-bucket --bucket terraform-state-bucket-yuuki-$(date +%s) --region us-east-1 --profile dev
+aws s3api create-bucket --bucket terraform-state-bucket-yuki --region us-east-2 --create-bucket-configuration LocationConstraint=us-east-2 # us-east-2の場合
 ```
 バケット存在確認
 ```
@@ -56,12 +57,22 @@ aws s3api put-bucket-versioning --bucket terraform-state-bucket-yuuki-172106066 
 指定したS3にファイルをアップロードする。
 ```
 echo "Hello, this is a test file" > test.txt
-aws s3 cp test.txt s3://document-processor-bucket-yuuki/test.txt --profile dev
+aws s3 cp test.txt s3://opensearch-document-yuki/test.txt
 ```
 
 CWからログを確認する。
 ```
 aws logs get-log-events --log-group-name /aws/lambda/document_processor --log-stream-name $(aws logs describe-log-streams --log-group-name /aws/lambda/document_processor --query 'logStreams[0].logStreamName' --output text) --profile dev #権限エラーになる。対応はしているので時間が経てばうまくいくかも？
+```
+
+CLIで使用してるIAMユーザーを確認
+```
+aws iam get-user
+```
+
+自分の管理ポリシーを確認する方法
+```
+aws iam list-attached-user-policies --user-name $(aws iam get-user --query 'User.UserName' --output text)
 ```
 
 ### 環境変数はDopplerで管理
@@ -124,6 +135,12 @@ export DOPPLER_TOKEN=$(doppler configure --json | grep -o '"token":"[^"]*' | sed
 設定したローカルの環境変数を、terraform/terraform.tfvarsの変数にセットする。
 ```
 export TF_VAR_doppler_token=$DOPPLER_TOKEN
+```
+
+terraformの変数を確認するために使用
+```
+➜ ✗ terraform console
+> var.doppler_token
 ```
 
 ### opensearchのダッシュボードにアクセスする方法
@@ -698,6 +715,147 @@ IAM、リソースベース、セキュリティグループの層について�
 - セキュリティグループをlambdaとopensearchに適用して、ネットワーク通信の許可をする。
 
 
+### OpenSerachの概念
+
+#### 各種重要用語
+
+- インデックス
+    - テーブルの概念に近い。文書の集合
+- ドキュメント
+    - ドキュメントは、OpenSearchに保存される基本的なデータ単位です。JSONオブジェクトとして表現され、各ドキュメントは一意のIDを持ちます。
+- フィールド
+    - ドキュメント内の個々のデータ項目です。各フィールドは名前と値のペアで構成されます。
+- マッピング
+    - インデックス内のドキュメントとそのフィールドの構造を定義します。これはスキーマのようなもので、各フィールドのデータ型や検索方法を指定します。
+- シャード
+    - インデックスを複数の部分（シャード）に分割することで、大量のデータを扱えるようになります。これにより、検索のパフォーマンスと拡張性が向上します。
+- レプリカ
+    - シャードのコピーで、データの冗長性と可用性を確保します。また、読み取り操作のスループットを向上させます。
+- ノード
+    - OpenSearchクラスター内の単一のサーバーです。データの保存、インデックス作成、検索リクエストの処理を行います。
+- クラスター
+    - 1つ以上のノードの集合で、すべてのデータを保持し、すべてのインデックス作成と検索機能を提供します。
+- クエリ
+     - データを検索するためのリクエストです。OpenSearchは複雑なクエリや全文検索をサポートしています。
+- インデックスパターン
+    - インデックスパターンは、1つ以上のインデックスを指す名前付きパターンです。これは主にKibana（OpenSearchのビジュアライゼーションツール）で使用され、複数の関連インデックスをグループ化して分析やビジュアライゼーションを行うのに役立ちます。
+- アグリゲーション
+    - データの統計的分析や集計を行う機能です。平均、合計、最小値、最大値などの計算ができます。
+- アナライザー
+    - 全文検索のために、テキストをトークン（検索可能な単位）に分割する処理を定義します。
+
+#### RDBMSとの比較
+
+OpenSearchとRDBMS（リレーショナルデータベース管理システム）の検索パフォーマンスを比較する際は、状況によって異なりますが、一般的には以下のようになります：
+
+1. 全文検索の場合：
+   OpenSearchが圧倒的に優位です。全文検索や複雑なテキストマッチングにおいては、OpenSearchのような検索エンジンの方が高速です。
+
+2. 構造化データの精密な検索の場合：
+   小規模から中規模のデータセットでは、RDBMSが同等もしくは優れたパフォーマンスを示すことがあります。特に、インデックスが適切に設定されている場合はそうです。
+
+3. 大規模データセットの場合：
+   数百万から数十億のレコードを扱う場合、OpenSearchの分散アーキテクチャが効果を発揮し、RDBMSよりも高速になることが多いです。
+
+4. 複雑なクエリの場合：
+   複雑な結合（JOIN）やサブクエリを含む操作は、RDBMSの方が得意です。一方、ファセット検索や集約などの分析的なクエリは、OpenSearchの方が高速です。
+
+5. リアルタイム性：
+   OpenSearchは近リアルタイムの検索が可能で、新しく追加されたデータもすぐに検索結果に反映されます。
+
+6. スケーラビリティ：
+   OpenSearchは水平スケーリングが容易で、大規模なデータセットや高負荷な環境での拡張性に優れています。
+
+パフォーマンスに影響する要因：
+
+- インデックス設計
+- ハードウェアリソース
+- データ量と複雑さ
+- クエリの種類と頻度
+- 同時接続数
+
+実際の選択は以下の点を考慮して行います：
+
+1. 用途：全文検索が主な目的ならOpenSearch、トランザクション処理が中心ならRDBMS
+2. データ構造：非構造化または半構造化データならOpenSearch、高度に構造化されたデータならRDBMS
+3. スケーラビリティ要件：大規模な分散システムが必要ならOpenSearch
+4. 一貫性要件：強い一貫性が必要ならRDBMS
+
+最適な選択は、具体的な使用ケース、データ特性、およびパフォーマンス要件によって異なります。多くの場合、RDBMSとOpenSearchを組み合わせて使用し、それぞれの長所を活かすハイブリッドアプローチが採用されます。
+
+パフォーマンスの具体的な比較が必要な場合は、実際のデータセットとクエリを使用してベンチマークテストを行うことをお勧めします。
+
+#### opensearchその他
+
+opensearchのダッシュボードのDevToolsでさまざまなクエリを実行できる。  
+https://localhost:9200/_dashboards/app/dev_tools#/console  
+
+公式ドキュメント  
+https://opensearch.org/docs/latest/about/  
+
+インデックスのリストを確認する
+```
+GET /_cat/indices?v
+```
+
+インデックスを作成するコマンド
+```
+PUT /new_index_name
+{
+  "settings": {
+    "number_of_shards": 3,
+    "number_of_replicas": 1
+  },
+  "mappings": {
+    "properties": {
+      "field1": { "type": "text" },
+      "field2": { "type": "keyword" },
+      "field3": { "type": "date" }
+    }
+  }
+}
+```
+
+特定のインデックスの内容を確認するコマンド
+```
+GET /documents/_search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+```
+
+件数10件まで、カラムを"content", "filename", "timestamp"で指定。
+```
+GET /documents/_search
+{
+  "query": {
+    "match_all": {}
+  },
+  "_source": ["content", "filename", "timestamp"],
+  "size": 10
+}
+```
+
+matchを使うと、文字列で部分一致検索ができる。
+```
+GET /documents/_search
+{
+  "query": {
+    "match": {
+      "content": "検索したい文字"
+    }
+  }
+}
+```
+
+
+### VPC Peering
+
+異なるリージョン間のサービスを繋ぐことができる。
+
+
 ### その他
 
 自分のパブリックIPを調べる方法
@@ -714,6 +872,23 @@ terraformのリソース関係図を出力する。
 ```
 terraform graph -draw-cycles | dot -Tpng > graph.png
 ```
+
+ec2の秘密鍵を作成(ec2は2048文字までしかサポートしていない。)
+```
+ssh-keygen -t rsa -b 2048 -f ~/.ssh/id_rsa.bastion_ec2
+```
+
+bationEC2を利用した、SSHトンネル作成方法
+```
+ssh -i ~/.ssh/id_rsa.bastion_ec2 -L 9200:vpc-yuki-test-opensearch-domain-lbsmofjyq3uj6ecz2n2zo3fdr4.us-east-2.es.amazonaws.com:443 ubuntu@3.128.74.56 -N
+https://localhost:9200/_dashboards # その後これでログインする。
+```
+接続にあたり確認すること。
+- 鍵の権限が600であること
+- ec2インスタンスのユーザーが適切であること。ダッシュボードの「接続」で利用可能なユーザーが表示される。
+- ec2のセキュリティグループに22ポートと適切なIPアドレスの接続が許可されていること。
+- 接続に成功しても応答が特にないのでわかりづらい
+
 
 ### TODO
 ・Route53の理解をする。

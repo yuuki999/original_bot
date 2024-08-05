@@ -1,6 +1,6 @@
 // クライアント VPN エンドポイントの作成
 resource "aws_ec2_client_vpn_endpoint" "main" {
-  description            = "document-processor-client-vpn"
+  description            = "document-processor-client-vpn-yuki-test"
   server_certificate_arn = var.server_certificate_arn // ACMの証明書ARN
   client_cidr_block      = "10.100.0.0/16" // VPCのCIDRと重複しない指定
   split_tunnel           = false // trueにすると、VPNに繋いでいる間、インターネットへの通信はVPNを経由しない

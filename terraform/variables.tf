@@ -2,7 +2,7 @@
 variable "aws_region" {
   description = "AWS region to deploy resources"
   type        = string
-  default     = "us-west-2"
+  default     = "us-east-2"
 }
 
 variable "opensearch_document_bucket_name" {
@@ -85,5 +85,14 @@ variable "allowed_iam_arn" {
 }
 
 variable "certificate_arn" {
+  type        = string
+}
+
+variable "bation_ip" {
+  type        = string
+}
+
+variable "public_key_path" {
+  description = "Path to the public key file for SSH access"
   type        = string
 }

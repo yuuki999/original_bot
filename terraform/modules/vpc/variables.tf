@@ -8,3 +8,7 @@ variable "allowed_ip" {
   type        = string
   description = "Allowed IP address for OpenSearch access"
 }
+
+variable "bation_ip" {
+  type        = string
+}

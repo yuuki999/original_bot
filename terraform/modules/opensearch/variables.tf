@@ -18,13 +18,13 @@ variable "instance_type" {
 variable "instance_count" {
   description = "Number of instances in the OpenSearch domain"
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "zone_awareness_enabled" {
   description = "Enable zone awareness for the OpenSearch domain"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "availability_zone_count" {
