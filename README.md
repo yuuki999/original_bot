@@ -5,6 +5,16 @@
 ※ GithubActionでdrawファイルをpngに変換して表示
 ※ 日本語が文字化けしているので修正する。
 
+### bunのインストール
+
+```
+curl -fsSL https://bun.sh/install | bash
+export BUN_INSTALL="$HOME/.bun" 
+export PATH=$BUN_INSTALL/bin:$PATH 
+source ~/.zshrc 
+bun --version
+```
+
 ### terraformコマンド
 
 初期化
@@ -31,6 +41,76 @@ terraform destroy　#　削除
 リソース再作成、下記コマンドでtaintしたリソースは次のapply時に強制的に再作成される。  
 ```
 terraform taint [リソース名] # 例: terraform taint module.vpn.aws_ec2_client_vpn_authorization_rule.main
+```
+
+### lambda関数の作成方法
+
+samが未設定の場合はインストール
+```
+brew tap aws/tap
+brew install aws-sam-cli
+pip install aws-sam-cli
+sam --version
+```
+
+tscが未設定の場合はインストール
+```
+brew install tsc
+```
+
+tsの設定ファイル(tsconfig.json)をインストール。下記が基本コマンドだが、余計な記述が多い。
+```
+tsc --init
+```
+
+なので、下記でlambdaに最適化した設定の作成が可能。
+```
+cat << EOF > ./tsconfig.json
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "CommonJS",
+        "moduleResolution": "Node",
+        "outDir": "./dist",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true
+    },
+    "exclude": ["node_modules", "**/*.test.ts"],
+}
+EOF
+```
+
+```sam init```でも作成することが可能だが、下記でlambdaに最適化したファイルの作成が可能。
+```
+cat << EOF > samconfig.toml
+version = 0.1
+
+[default]
+[default.global.parameters]
+stack_name = "bedrock_processor" # 名前を関数名に書き換える。
+
+[default.build.parameters]
+use_container = false
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+
+[default.package.parameters]
+resolve_s3 = true
+
+[default.sync.parameters]
+watch = true
+
+[default.local_start_api.parameters]
+warm_containers = "EAGER"
+
+[default.local_start_lambda.parameters]
+warm_containers = "EAGER"
+EOF
 ```
 
 ### awsコマンド

@@ -19,8 +19,6 @@ resource "aws_lambda_function" "document_processor" {
     variables = {
       OPENSEARCH_ENDPOINT = var.opensearch_endpoint
       LAMBDA_ROLE_ARN     = aws_iam_role.lambda_role.arn
-      # OPENSEARCH_USERNAME = var.opensearch_username
-      # OPENSEARCH_PASSWORD = var.opensearch_password
     }
   }
 

@@ -1,0 +1,23 @@
+{
+  "name": "bedrock",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "esbuild ./index.ts --bundle --platform=node --target=node18 --outfile=dist/index.js",
+    "package": "pnpm run build && cd dist && zip -r ../function.zip ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.624.0",
+    "@opensearch-project/opensearch": "^2.11.0",
+    "aws-lambda": "^1.0.7",
+    "aws4": "^1.13.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.142",
+    "@types/node": "^22.1.0"
+  }
+}

@@ -1,0 +1,12 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SAM Template for document_processor
+Resources:
+  BedrockProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/ # 実行されるコードのディレクトリ
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64

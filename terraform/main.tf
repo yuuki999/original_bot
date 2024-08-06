@@ -16,10 +16,10 @@ module "s3_bucket" {
   // S3はグローバルサービスなのでVPCの設定は不要。
 }
 
-module "lambda_function" {
-  source             = "./modules/lambda"
+module "opensearch_lambda" {
+  source             = "./modules/opensearch_lambda"
   function_name      = "document_processor"
-  lambda_source_file = "${path.module}/../src/lambda/document_processor/dist/index.js" // memo: 現状1つしかlambdaがないが、今後は増える可能性がある。
+  lambda_source_file = "${path.module}/../src/lambda/document_processor/dist/index.js"
   s3_bucket_arn      = module.s3_bucket.bucket_arn
   vpc_config = {
     subnet_ids         = module.vpc.private_subnet_ids
@@ -27,6 +27,23 @@ module "lambda_function" {
   }
   tags               = var.common_tags
 
+  opensearch_endpoint   = module.opensearch_domain.endpoint
+  opensearch_username   = data.doppler_secrets.this.map.OPENSEARCH_USERNAME
+  opensearch_password   = data.doppler_secrets.this.map.OPENSEARCH_PASSWORD
+  opensearch_domain_arn = module.opensearch_domain.arn
+}
+
+module "bedrock_lambda" {
+  source             = "./modules/bedrock_lambda"
+  function_name      = "bedrock_processor"
+  lambda_source_file = "${path.module}/../src/lambda/bedrock_processor/dist/index.js"
+  vpc_config = {
+    subnet_ids         = module.vpc.private_subnet_ids
+    security_group_ids = [module.vpc.lambda_security_group_id]
+  }
+  tags               = var.common_tags
+
+  bedrock_endpoint      = var.bedrock_endpoint
   opensearch_endpoint   = module.opensearch_domain.endpoint
   opensearch_username   = data.doppler_secrets.this.map.OPENSEARCH_USERNAME
   opensearch_password   = data.doppler_secrets.this.map.OPENSEARCH_PASSWORD
@@ -48,7 +65,7 @@ module "opensearch_domain" {
   tags                      = var.common_tags
   opensearch_username = data.doppler_secrets.this.map.OPENSEARCH_USERNAME
   opensearch_password = data.doppler_secrets.this.map.OPENSEARCH_PASSWORD
-  lambda_role_arn     = module.lambda_function.role_arn
+  lambda_role_arn     = module.opensearch_lambda.role_arn
   allowed_iam_arn     = var.allowed_iam_arn
 }
 
@@ -58,11 +75,11 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
   bucket = module.s3_bucket.bucket_id
 
   lambda_function {
-    lambda_function_arn = module.lambda_function.function_arn
+    lambda_function_arn = module.opensearch_lambda.function_arn
     events              = ["s3:ObjectCreated:*"]
   }
 
-  depends_on = [module.lambda_function]
+  depends_on = [module.opensearch_lambda]
 }
 
 # API Gateway
@@ -94,7 +111,7 @@ module "vpn" {
   cloudwatch_log_stream_name = module.cw.vpn_log_stream_name
   server_certificate_arn     = var.certificate_arn
 
-  depends_on = [module.vpc, module.lambda_function, module.opensearch_domain]
+  depends_on = [module.vpc, module.opensearch_lambda, module.opensearch_domain]
 }
 
 // CW

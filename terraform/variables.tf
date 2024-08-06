@@ -96,3 +96,8 @@ variable "public_key_path" {
   description = "Path to the public key file for SSH access"
   type        = string
 }
+
+variable "bedrock_endpoint" {
+  type        = string
+}
+
