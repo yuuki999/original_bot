@@ -101,3 +101,6 @@ variable "bedrock_endpoint" {
   type        = string
 }
 
+variable "opensearch_index" {
+  type        = string
+}

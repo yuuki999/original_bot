@@ -48,6 +48,7 @@ module "bedrock_lambda" {
   opensearch_username   = data.doppler_secrets.this.map.OPENSEARCH_USERNAME
   opensearch_password   = data.doppler_secrets.this.map.OPENSEARCH_PASSWORD
   opensearch_domain_arn = module.opensearch_domain.arn
+  opensearch_index      = var.opensearch_index
 }
 
 module "opensearch_domain" {
