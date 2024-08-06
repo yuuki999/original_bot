@@ -223,6 +223,16 @@ terraformの変数を確認するために使用
 > var.doppler_token
 ```
 
+### Bedrockの使い方
+
+下記でapi gatewayを使って疎通確認
+```
+curl -X POST \
+  https://xglq5wocr1.execute-api.us-east-2.amazonaws.com/prod/bot \
+  -H 'Content-Type: application/json' \
+  -d '{"query": "ここにユーザーの問い合わせを入力"}'
+```
+
 ### opensearchのダッシュボードにアクセスする方法
 
 1. VPCの画面から、左のサイドバー「クライアントVPNエンドポイント」をクリックする。  

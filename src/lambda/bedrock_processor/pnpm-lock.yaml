@@ -11,9 +11,15 @@ importers:
       '@aws-sdk/client-bedrock-runtime':
         specifier: ^3.624.0
         version: 3.624.0
+      '@aws-sdk/credential-provider-node':
+        specifier: ^3.624.0
+        version: 3.624.0(@aws-sdk/client-sso-oidc@3.624.0(@aws-sdk/client-sts@3.624.0))(@aws-sdk/client-sts@3.624.0)
       '@opensearch-project/opensearch':
         specifier: ^2.11.0
         version: 2.11.0
+      aws:
+        specifier: link:@opensearch-project/opensearch/aws
+        version: link:@opensearch-project/opensearch/aws
       aws-lambda:
         specifier: ^1.0.7
         version: 1.0.7

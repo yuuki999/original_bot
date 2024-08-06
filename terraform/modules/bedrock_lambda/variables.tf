@@ -81,7 +81,7 @@ variable "runtime" {
 variable "bedrock_model_id" {
   description = "The ID of the Bedrock model to use"
   type        = string
-  default     = "anthropic.claude-3-sonnet-20240229-v1:0"
+  default     = "anthropic.claude-3-5-sonnet-20240620-v1:0"
 }
 
 # OpenSearch Index

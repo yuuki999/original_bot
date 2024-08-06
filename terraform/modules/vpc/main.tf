@@ -101,6 +101,11 @@ resource "aws_security_group" "opensearch" {
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.main.id
+  }
+
   tags = merge(var.common_tags, {
     Name = "document-processor-private-route-table"
   })
@@ -132,7 +137,7 @@ resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name = "main-igw"
+    Name = "bedrock-lambda-igw"
   }
 }
 
@@ -168,4 +173,33 @@ resource "aws_route_table_association" "public" {
   count          = 1 
   subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
+}
+
+
+// 異なるリージョンのbedrockと通信するために、VPC内のプライベートサブネットからNAT Gatewayを経由してインターネットに接続する
+// NAT Gatewayの作成
+resource "aws_nat_gateway" "main" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id  # 最初のパブリックサブネットに配置
+
+  tags = merge(var.common_tags, {
+    Name = "Main NAT Gateway"
+  })
+}
+
+resource "aws_eip" "nat" {
+  domain = "vpc"
+  tags = merge(var.common_tags, {
+    Name = "NAT Gateway EIP"
+  })
+}
+
+// 443ポートで外部に接続するためのセキュリティグループルール
+resource "aws_security_group_rule" "lambda_to_bedrock" {
+  type              = "egress"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.lambda.id
 }
