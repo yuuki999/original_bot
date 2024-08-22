@@ -51,22 +51,17 @@ const getOpenSearchClient = async (): Promise<Client> => {
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
-    // const userInput = JSON.parse(event.body || "{}").query; // ユーザー文字列
-    // const bedrock_query = await generateOpenSearchQuery(userInput); // クエリ作成
-    // const searchResults = await searchOpenSearch(bedrock_query); // 検索
-    // const finalResponse = await generateHumanReadableResponse(searchResults);
-
     const userInput = JSON.parse(event.body || "{}").query;
-    console.log("User input:", userInput);
+    console.log("ユーザーの入力:", userInput);
 
     const bedrock_query = await generateOpenSearchQuery(userInput);
-    console.log("Generated OpenSearch query:", bedrock_query);
+    console.log("AIにより作成されたクエリ:", bedrock_query);
 
     const searchResults = await searchOpenSearch(bedrock_query);
-    console.log("Search results:", searchResults);
+    console.log("OpenSearchからの結果:", searchResults);
 
     const finalResponse = await generateHumanReadableResponse(searchResults);
-    console.log("Final response:", finalResponse);
+    console.log("AIの回答結果:", finalResponse);
 
     return {
       statusCode: 200,
@@ -82,6 +77,11 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 };
 
 // ユーザーの問い合わせを、OpenSearchのクエリに変換する。
+// TODO: ここの精度があまり良くない。opensearchの構造や、ヒントを与えてクエリの精度を上げる方法を調査する。
+// クエリに_allを使用するのは負荷の観点から避けるべき。
+// { "query": { "match": { "_all": "社内の文書" } } }
+// TODO: botの会話の履歴をdynamoDBとかに保存して、学習させることで精度を上げる方法もある。
+// https://blog.serverworks.co.jp/bedrock_chatbot_assistant
 async function generateOpenSearchQuery(userInput: string): Promise<string> {
   const command = new InvokeModelCommand({
     modelId: BEDROCK_MODEL_ID,
@@ -97,6 +97,7 @@ async function generateOpenSearchQuery(userInput: string): Promise<string> {
   const response = await bedrockClient.send(command);
   const responseBody = JSON.parse(new TextDecoder().decode(response.body));
   
+  // AIがJSONを返却してくれるので、念の為JSONを取り出す処理。
   if (responseBody.content && responseBody.content[0] && responseBody.content[0].text) {
     const text = responseBody.content[0].text.trim();
     // JSON部分を抽出するための正規表現
@@ -151,7 +152,7 @@ async function generateHumanReadableResponse(searchResults: any): Promise<string
       anthropic_version: "bedrock-2023-05-31",
       max_tokens: BEDROCK_MAX_TOKENS, // botの生成クエリ最大文字数
       messages: [
-        { role: "user", content: `Generate a human-readable response based on these search results: ${JSON.stringify(searchResults)}` }
+        { role: "user", content: `以下の検索結果に基づいて、日本語で人間が読みやすい応答を生成してください。検索結果: ${JSON.stringify(searchResults)}` }
       ]
     }),
   });
@@ -163,6 +164,6 @@ async function generateHumanReadableResponse(searchResults: any): Promise<string
     return responseBody.content[0].text;
   } else {
     console.error("Unexpected response format from Bedrock:", responseBody);
-    throw new Error("Failed to generate human-readable response");
+    throw new Error("日本語の応答の生成に失敗しました");
   }
 }
